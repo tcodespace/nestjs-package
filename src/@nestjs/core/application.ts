@@ -51,7 +51,7 @@ export class NestApplication {
           finalRoute,
           (request: Request, response: Response, next: NextFunction) => {
             // 处理参数装饰器
-            const methodArguments = paramsMetaData?.map((item) => {
+            const methodArguments = paramsMetaData.map((item) => {
               let argumentsValue = null;
               switch (item.type) {
                 case "Request":
