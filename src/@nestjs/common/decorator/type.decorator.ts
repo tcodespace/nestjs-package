@@ -19,3 +19,10 @@ export type HttpMethods = (typeof HttpMethod)[keyof typeof HttpMethod];
 export interface ControllerInstance {
   [key: string]: () => unknown;
 }
+
+export type ParamsDecoratorType = "Request" | "Query";
+
+export interface ParamsDecoratorMeta {
+  type: ParamsDecoratorType;
+  params?: string;
+}

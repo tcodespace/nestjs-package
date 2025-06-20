@@ -2,11 +2,17 @@ import "reflect-metadata";
 import path from "path";
 import express from "express";
 import type { Express, Request, Response, NextFunction } from "express";
-import type { ControllerInstance, HttpMethods } from "../common";
+import type {
+  ControllerInstance,
+  HttpMethods,
+  ParamsDecoratorMeta,
+} from "../common";
 
 export class NestApplication {
   private readonly app: Express;
   private readonly module: Function;
+  private readonly _baseBath: string = "/";
+
   constructor(module: Function) {
     this.app = express();
     this.module = module;
@@ -32,11 +38,30 @@ export class NestApplication {
         if (!method) continue;
         const methodPath = Reflect.getMetadata("path", method);
         const methodType: HttpMethods = Reflect.getMetadata("method", method);
-        const finalRoute = path.posix.join(prefix, methodPath);
+        const finalRoute = path.posix.join(this._baseBath, prefix, methodPath);
+
+        // 收集参数装饰器数组
+        const paramsMetaData: ParamsDecoratorMeta[] = Reflect.getMetadata(
+          "params",
+          Controller.prototype,
+          methodName
+        );
+
         this.app[methodType](
-          "/" + finalRoute,
+          finalRoute,
           (request: Request, response: Response, next: NextFunction) => {
-            const result = method?.();
+            // 处理参数装饰器
+            const methodArguments = paramsMetaData?.map((item) => {
+              let argumentsValue = null;
+              switch (item.type) {
+                case "Request":
+                  return item.params ? (request as any)[item.params] : request;
+                default:
+                  return undefined;
+              }
+            });
+
+            const result = method?.call(instance, ...methodArguments);
             response.send(result);
           }
         );
