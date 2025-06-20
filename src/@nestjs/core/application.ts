@@ -18,6 +18,23 @@ export class NestApplication {
     this.module = module;
   }
 
+  private resolveParams(
+    paramsMetaData: ParamsDecoratorMeta[],
+    request: Request
+  ) {
+    // 处理参数装饰器
+    const methodArguments = paramsMetaData.map((item) => {
+      let argumentsValue = null;
+      switch (item.type) {
+        case "Request":
+          return item.params ? (request as any)[item.params] : request;
+        default:
+          return undefined;
+      }
+    });
+    return methodArguments;
+  }
+
   resolver() {
     const controllers: (new (...args: any[]) => {})[] = Reflect.getMetadata(
       "controllers",
@@ -50,17 +67,7 @@ export class NestApplication {
         this.app[methodType](
           finalRoute,
           (request: Request, response: Response, next: NextFunction) => {
-            // 处理参数装饰器
-            const methodArguments = paramsMetaData.map((item) => {
-              let argumentsValue = null;
-              switch (item.type) {
-                case "Request":
-                  return item.params ? (request as any)[item.params] : request;
-                default:
-                  return undefined;
-              }
-            });
-
+            const methodArguments = this.resolveParams(paramsMetaData, request);
             const result = method?.call(instance, ...methodArguments);
             response.send(result);
           }
