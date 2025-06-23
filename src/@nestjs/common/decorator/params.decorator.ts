@@ -20,3 +20,5 @@ export function createParamsDecorator(
 export const Request = createParamsDecorator("Request");
 
 export const Req = Request;
+
+export const Headers = createParamsDecorator("Headers");

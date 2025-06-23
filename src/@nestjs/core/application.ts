@@ -28,6 +28,8 @@ export class NestApplication {
       switch (item.type) {
         case "Request":
           return item.params ? (request as any)[item.params] : request;
+        case "Headers":
+          return item.params ? (request as any)[item.params] : request.headers;
         default:
           return undefined;
       }
