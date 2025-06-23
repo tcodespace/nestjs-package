@@ -20,7 +20,7 @@ export interface ControllerInstance {
   [key: string]: () => unknown;
 }
 
-export type ParamsDecoratorType = "Request" | "Query" | "Headers";
+export type ParamsDecoratorType = "Request" | "Query" | "Headers" | "IP";
 
 export interface ParamsDecoratorMeta {
   type: ParamsDecoratorType;

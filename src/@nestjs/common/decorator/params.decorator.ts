@@ -22,3 +22,7 @@ export const Request = createParamsDecorator("Request");
 export const Req = Request;
 
 export const Headers = createParamsDecorator("Headers");
+
+export const IP = createParamsDecorator("IP");
+
+export const Query = createParamsDecorator("Query");

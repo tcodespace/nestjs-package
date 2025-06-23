@@ -29,8 +29,16 @@ export class NestApplication {
       switch (item.type) {
         case "Request":
           return item.params ? (request as any)[item.params] : request;
+        case "Query":
+          return item.params
+            ? (request as any)["query"]?.[item.params]
+            : request.query;
         case "Headers":
-          return item.params ? (request as any)[item.params] : request.headers;
+          return item.params
+            ? (request as any)["headers"]?.[item.params]
+            : request.headers;
+        case "IP":
+          return request.ip;
         default:
           return undefined;
       }
