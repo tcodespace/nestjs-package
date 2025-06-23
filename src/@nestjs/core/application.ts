@@ -20,7 +20,7 @@ export class NestApplication {
   }
 
   private resolveParams(
-    paramsMetaData: ParamsDecoratorMeta[],
+    paramsMetaData: ParamsDecoratorMeta[] = [],
     request: Request
   ) {
     // 处理参数装饰器
@@ -39,6 +39,10 @@ export class NestApplication {
             : request.headers;
         case "IP":
           return request.ip;
+        case "Params":
+          return item.params
+            ? (request as any)["params"]?.[item.params]
+            : request.params;
         default:
           return undefined;
       }

@@ -26,3 +26,5 @@ export const Headers = createParamsDecorator("Headers");
 export const IP = createParamsDecorator("IP");
 
 export const Query = createParamsDecorator("Query");
+
+export const Params = createParamsDecorator("Params");
