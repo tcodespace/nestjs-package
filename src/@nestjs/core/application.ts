@@ -7,6 +7,7 @@ import type {
   HttpMethods,
   ParamsDecoratorMeta,
 } from "../common";
+import { isPromise } from "rattail";
 
 export class NestApplication {
   private readonly app: Express;
@@ -71,7 +72,11 @@ export class NestApplication {
           (request: Request, response: Response, next: NextFunction) => {
             const methodArguments = this.resolveParams(paramsMetaData, request);
             const result = method?.call(instance, ...methodArguments);
-            response.send(result);
+            !isPromise(result)
+              ? response.send(result)
+              : result.then((res: unknown) => {
+                  response.send(res);
+                });
           }
         );
       }
