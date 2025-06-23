@@ -1,7 +1,14 @@
 import "reflect-metadata";
 import path from "path";
 import express from "express";
-import type { Express, Request, Response, NextFunction } from "express";
+import type {
+  Express,
+  Request,
+  Response,
+  NextFunction,
+  RequestHandler,
+  ErrorRequestHandler,
+} from "express";
 import type {
   ControllerInstance,
   HttpMethods,
@@ -17,6 +24,10 @@ export class NestApplication {
   constructor(module: Function) {
     this.app = express();
     this.module = module;
+  }
+
+  public use(middleware: RequestHandler | ErrorRequestHandler) {
+    this.app.use(middleware);
   }
 
   private resolveParams(
@@ -44,7 +55,7 @@ export class NestApplication {
     return methodArguments;
   }
 
-  resolver() {
+  private resolver() {
     const controllers: (new (...args: any[]) => {})[] = Reflect.getMetadata(
       "controllers",
       this.module
