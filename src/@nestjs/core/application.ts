@@ -30,19 +30,13 @@ export class NestApplication {
         case "Request":
           return item.params ? (request as any)[item.params] : request;
         case "Query":
-          return item.params
-            ? (request as any)["query"]?.[item.params]
-            : request.query;
+          return item.params ? request.query?.[item.params] : request.query;
         case "Headers":
-          return item.params
-            ? (request as any)["headers"]?.[item.params]
-            : request.headers;
+          return item.params ? request.headers?.[item.params] : request.headers;
         case "IP":
           return request.ip;
         case "Params":
-          return item.params
-            ? (request as any)["params"]?.[item.params]
-            : request.params;
+          return item.params ? request.params?.[item.params] : request.params;
         default:
           return undefined;
       }
