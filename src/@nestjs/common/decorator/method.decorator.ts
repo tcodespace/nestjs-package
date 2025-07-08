@@ -22,3 +22,13 @@ export function Post(path: string) {
     Reflect.defineMetadata("method", HttpMethod.POST, descriptor.value);
   };
 }
+
+export function Head(headerParams: Record<string, string>) {
+  return (
+    target: object,
+    propertyKey: string,
+    descriptor: PropertyDescriptor
+  ) => {
+    Reflect.defineMetadata("header", headerParams, descriptor.value);
+  };
+}

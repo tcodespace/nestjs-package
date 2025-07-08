@@ -9,10 +9,11 @@ import type {
   RequestHandler,
   ErrorRequestHandler,
 } from "express";
-import type {
-  ControllerInstance,
-  HttpMethods,
-  ParamsDecoratorMeta,
+import {
+  ResponseDecoratorPassthrough,
+  type ControllerInstance,
+  type HttpMethods,
+  type ParamsDecoratorMeta,
 } from "../common";
 import { isPromise } from "rattail";
 
@@ -23,6 +24,8 @@ export class NestApplication {
 
   constructor(module: Function) {
     this.app = express();
+    this.app.use(express.json());
+    this.app.use(express.urlencoded({ extended: true }));
     this.module = module;
   }
 
@@ -30,24 +33,63 @@ export class NestApplication {
     this.app.use(middleware);
   }
 
+  /**
+   * @description 检查方法是否有Response装饰器
+   * @param paramsMetaData 方法的参数装饰器数组
+   * @returns boolean
+   */
+  private InspectResponseDecorator(paramsMetaData: ParamsDecoratorMeta[]) {
+    let hasPassthrough = false;
+    const responseMetaData = paramsMetaData.find(
+      (item) => item.type === "Response"
+    );
+    if (responseMetaData?.params) {
+      hasPassthrough = Reflect.has(
+        responseMetaData?.params as object,
+        ResponseDecoratorPassthrough
+      );
+    }
+    return responseMetaData && !hasPassthrough;
+  }
+
+  private attachHeader(response: Response, header: Record<string, string>) {
+    for (const propertyKey in header) {
+      response.setHeader(propertyKey, header[propertyKey]);
+    }
+  }
+
   private resolveParams(
     paramsMetaData: ParamsDecoratorMeta[] = [],
-    request: Request
+    request: Request,
+    response: Response
   ) {
     // 处理参数装饰器
     const methodArguments = paramsMetaData.map((item) => {
-      let argumentsValue = null;
       switch (item.type) {
         case "Request":
-          return item.params ? (request as any)[item.params] : request;
+          return item.params
+            ? (request as any)[item.params as string]
+            : request;
         case "Query":
-          return item.params ? request.query?.[item.params] : request.query;
+          return item.params
+            ? request.query?.[item.params as string]
+            : request.query;
         case "Headers":
-          return item.params ? request.headers?.[item.params] : request.headers;
+          return item.params
+            ? request.headers?.[item.params as string]
+            : request.headers;
         case "IP":
           return request.ip;
         case "Params":
-          return item.params ? request.params?.[item.params] : request.params;
+          return item.params
+            ? request.params?.[item.params as string]
+            : request.params;
+        case "Body":
+          return item.params
+            ? request.body?.[item.params as string]
+            : request.body;
+        case "Response":
+          return response;
         default:
           return undefined;
       }
@@ -75,9 +117,14 @@ export class NestApplication {
         if (!method) continue;
         const methodPath = Reflect.getMetadata("path", method);
         const methodType: HttpMethods = Reflect.getMetadata("method", method);
+        const customHeader: Record<string, string> = Reflect.getMetadata(
+          "header",
+          method
+        );
+
         const finalRoute = path.posix.join(this._baseBath, prefix, methodPath);
 
-        // 收集参数装饰器数组
+        // 收集方法的参数装饰器数组
         const paramsMetaData: ParamsDecoratorMeta[] = Reflect.getMetadata(
           "params",
           Controller.prototype,
@@ -87,8 +134,20 @@ export class NestApplication {
         this.app[methodType](
           finalRoute,
           (request: Request, response: Response, next: NextFunction) => {
-            const methodArguments = this.resolveParams(paramsMetaData, request);
+            this.attachHeader(response, customHeader);
+
+            const methodArguments = this.resolveParams(
+              paramsMetaData,
+              request,
+              response
+            );
+
             const result = method?.call(instance, ...methodArguments);
+
+            const hasResponseDecorator =
+              this.InspectResponseDecorator(paramsMetaData);
+            if (hasResponseDecorator) return;
+
             !isPromise(result)
               ? response.send(result)
               : result.then((res: unknown) => {

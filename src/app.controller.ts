@@ -6,8 +6,15 @@ import {
   IP,
   Query,
   Params,
+  Response,
+  Post,
+  Body,
+  Head,
 } from "@nestjs/common";
-import type { Request as ExpressRequest } from "express";
+import type {
+  Request as ExpressRequest,
+  Response as ExpressResponse,
+} from "express";
 
 @Controller("api")
 export class AppController {
@@ -32,5 +39,20 @@ export class AppController {
   @Get("/ab*de")
   getWords(@Request("url") url: string) {
     return url;
+  }
+
+  @Get("/get/response")
+  getResponse(@Response({ passthrough: true }) response: ExpressResponse) {
+    console.log("[ response ] >", response);
+    return "111";
+  }
+
+  @Post("/get/userinfo")
+  @Head({
+    Authentication: "Basic dXNlcm5hbWU6cGFzc3dvcmQ=999999",
+  })
+  getUser(@Body() body: object, @Body("username") username: string) {
+    console.log("[ body ] >", body);
+    return username;
   }
 }

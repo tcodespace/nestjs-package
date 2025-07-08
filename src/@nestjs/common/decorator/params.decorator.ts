@@ -1,10 +1,22 @@
 import "reflect-metadata";
 import { ParamsDecoratorMeta, ParamsDecoratorType } from "./type.decorator";
 
-export function createParamsDecorator(
-  paramsDecoratorType: ParamsDecoratorType
+type FactoryParamsTypeMap = {
+  Request: string;
+  Query: string;
+  Headers: string;
+  IP: string;
+  Params: string;
+  Body: string;
+  Response: {
+    passthrough?: boolean;
+  };
+};
+
+export function createParamsDecorator<T extends ParamsDecoratorType>(
+  paramsDecoratorType: T
 ) {
-  return function (factoryParams?: string) {
+  return function (factoryParams?: FactoryParamsTypeMap[T]) {
     return (target: object, propertyKey: string, paramsIndex: number) => {
       const paramsMetaData: ParamsDecoratorMeta[] =
         Reflect.getMetadata("params", target, propertyKey) || [];
@@ -28,3 +40,9 @@ export const IP = createParamsDecorator("IP");
 export const Query = createParamsDecorator("Query");
 
 export const Params = createParamsDecorator("Params");
+
+export const Response = createParamsDecorator("Response");
+
+export const Res = Response;
+
+export const Body = createParamsDecorator("Body");

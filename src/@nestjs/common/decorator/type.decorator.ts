@@ -25,9 +25,13 @@ export type ParamsDecoratorType =
   | "Query"
   | "Headers"
   | "IP"
-  | "Params";
+  | "Params"
+  | "Response"
+  | "Body";
 
 export interface ParamsDecoratorMeta {
   type: ParamsDecoratorType;
-  params?: string;
+  params?: string | object;
 }
+
+export const ResponseDecoratorPassthrough = "passthrough";
