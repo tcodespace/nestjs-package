@@ -65,29 +65,20 @@ export class NestApplication {
   ) {
     // 处理参数装饰器
     const methodArguments = paramsMetaData.map((item) => {
+      const params = String(item.params);
       switch (item.type) {
         case "Request":
-          return item.params
-            ? (request as any)[item.params as string]
-            : request;
+          return item.params ? (request as any)[params] : request;
         case "Query":
-          return item.params
-            ? request.query?.[item.params as string]
-            : request.query;
+          return item.params ? request.query?.[params] : request.query;
         case "Headers":
-          return item.params
-            ? request.headers?.[item.params as string]
-            : request.headers;
+          return item.params ? request.headers?.[params] : request.headers;
         case "IP":
           return request.ip;
         case "Params":
-          return item.params
-            ? request.params?.[item.params as string]
-            : request.params;
+          return item.params ? request.params?.[params] : request.params;
         case "Body":
-          return item.params
-            ? request.body?.[item.params as string]
-            : request.body;
+          return item.params ? request.body?.[params] : request.body;
         case "Response":
           return response;
         default:
