@@ -38,18 +38,20 @@ export class NestApplication {
    * @param paramsMetaData 方法的参数装饰器数组
    * @returns boolean
    */
-  private InspectResponseDecorator(paramsMetaData: ParamsDecoratorMeta[]) {
+  private inspectDecorator(paramsMetaData: ParamsDecoratorMeta[]) {
     let hasPassthrough = false;
     const responseMetaData = paramsMetaData.find(
       (item) => item.type === "Response"
     );
+    const nextMeteData = paramsMetaData.find((item) => item.type === "Next");
+
     if (responseMetaData?.params) {
       hasPassthrough = Reflect.has(
         responseMetaData?.params as object,
         ResponseDecoratorPassthrough
       );
     }
-    return responseMetaData && !hasPassthrough;
+    return (responseMetaData && !hasPassthrough) || nextMeteData;
   }
 
   private attachHeader(response: Response, header: Record<string, string>) {
@@ -61,26 +63,31 @@ export class NestApplication {
   private resolveParams(
     paramsMetaData: ParamsDecoratorMeta[] = [],
     request: Request,
-    response: Response
+    response: Response,
+    next: NextFunction
   ) {
     // 处理参数装饰器
     const methodArguments = paramsMetaData.map((item) => {
       const params = String(item.params);
       switch (item.type) {
         case "Request":
-          return item.params ? (request as any)[params] : request;
+          return params ? (request as any)[params] : request;
         case "Query":
-          return item.params ? request.query?.[params] : request.query;
+          return params ? request.query?.[params] : request.query;
         case "Headers":
-          return item.params ? request.headers?.[params] : request.headers;
+          return params ? request.headers?.[params] : request.headers;
         case "IP":
           return request.ip;
         case "Params":
-          return item.params ? request.params?.[params] : request.params;
+          return params ? request.params?.[params] : request.params;
         case "Body":
-          return item.params ? request.body?.[params] : request.body;
+          return params ? request.body?.[params] : request.body;
         case "Response":
           return response;
+        case "Session":
+          return request.session;
+        case "Next":
+          return next;
         default:
           return undefined;
       }
@@ -130,13 +137,13 @@ export class NestApplication {
             const methodArguments = this.resolveParams(
               paramsMetaData,
               request,
-              response
+              response,
+              next
             );
 
             const result = method?.call(instance, ...methodArguments);
 
-            const hasResponseDecorator =
-              this.InspectResponseDecorator(paramsMetaData);
+            const hasResponseDecorator = this.inspectDecorator(paramsMetaData);
             if (hasResponseDecorator) return;
 
             !isPromise(result)

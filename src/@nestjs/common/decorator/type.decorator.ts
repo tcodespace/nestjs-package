@@ -27,7 +27,9 @@ export type ParamsDecoratorType =
   | "IP"
   | "Params"
   | "Response"
-  | "Body";
+  | "Body"
+  | "Session"
+  | "Next";
 
 export interface ParamsDecoratorMeta {
   type: ParamsDecoratorType;

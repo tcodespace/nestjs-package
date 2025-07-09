@@ -10,6 +10,7 @@ import {
   Post,
   Body,
   Head,
+  Next,
 } from "@nestjs/common";
 import type {
   Request as ExpressRequest,
@@ -54,5 +55,11 @@ export class AppController {
   getUser(@Body() body: object, @Body("username") username: string) {
     console.log("[ body ] >", body);
     return username;
+  }
+
+  @Get("next")
+  getNext(@Next() next: Function) {
+    next();
+    return "next";
   }
 }

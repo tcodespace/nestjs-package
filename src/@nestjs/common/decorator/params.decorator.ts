@@ -8,6 +8,8 @@ type FactoryParamsTypeMap = {
   IP: string;
   Params: string;
   Body: string;
+  Session: string;
+  Next: string;
   Response: {
     passthrough?: boolean;
   };
@@ -46,3 +48,7 @@ export const Response = createParamsDecorator("Response");
 export const Res = Response;
 
 export const Body = createParamsDecorator("Body");
+
+export const Session = createParamsDecorator("Session");
+
+export const Next = createParamsDecorator("Next");
