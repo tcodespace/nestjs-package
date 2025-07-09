@@ -32,3 +32,13 @@ export function Head(headerParams: Record<string, string>) {
     Reflect.defineMetadata("header", headerParams, descriptor.value);
   };
 }
+
+export function Redirect(url: string, status: number) {
+  return (
+    target: object,
+    propertyKey: string,
+    decorator: PropertyDescriptor
+  ) => {
+    Reflect.defineMetadata("redirect", { url, status }, decorator.value);
+  };
+}

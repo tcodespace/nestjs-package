@@ -11,12 +11,16 @@ import {
   Body,
   Head,
   Next,
+  Redirect,
 } from "@nestjs/common";
 import type {
   Request as ExpressRequest,
   Response as ExpressResponse,
 } from "express";
 
+/**
+ * 以下装饰器测试
+ */
 @Controller("api")
 export class AppController {
   @Get("hello/:username/:id")
@@ -61,5 +65,19 @@ export class AppController {
   getNext(@Next() next: Function) {
     next();
     return "next";
+  }
+
+  @Get("redirect/baidu")
+  @Redirect("https://wwww.baidu.com", 302)
+  getBaiduWebsite() {
+    return "redirect to baidu website";
+  }
+
+  @Get("url/baidu")
+  getBaidu() {
+    return {
+      url: "https://www.zhihu.com",
+      status: 302,
+    };
   }
 }

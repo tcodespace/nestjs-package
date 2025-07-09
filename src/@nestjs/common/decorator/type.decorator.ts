@@ -36,4 +36,9 @@ export interface ParamsDecoratorMeta {
   params?: string | object;
 }
 
+export interface RedirectInfo {
+  url: string;
+  status: number;
+}
+
 export const ResponseDecoratorPassthrough = "passthrough";

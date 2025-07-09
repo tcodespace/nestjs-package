@@ -10,6 +10,7 @@ import type {
   ErrorRequestHandler,
 } from "express";
 import {
+  RedirectInfo,
   ResponseDecoratorPassthrough,
   type ControllerInstance,
   type HttpMethods,
@@ -33,6 +34,11 @@ export class NestApplication {
     this.app.use(middleware);
   }
 
+  private redirectRoute(response: Response, redirect: RedirectInfo) {
+    const { url, status = 302 } = redirect;
+    response.redirect(status, url);
+  }
+
   /**
    * @description 检查方法是否有Response装饰器
    * @param paramsMetaData 方法的参数装饰器数组
@@ -40,10 +46,10 @@ export class NestApplication {
    */
   private inspectDecorator(paramsMetaData: ParamsDecoratorMeta[]) {
     let hasPassthrough = false;
-    const responseMetaData = paramsMetaData.find(
+    const responseMetaData = paramsMetaData?.find(
       (item) => item.type === "Response"
     );
-    const nextMeteData = paramsMetaData.find((item) => item.type === "Next");
+    const nextMeteData = paramsMetaData?.find((item) => item.type === "Next");
 
     if (responseMetaData?.params) {
       hasPassthrough = Reflect.has(
@@ -115,6 +121,7 @@ export class NestApplication {
         if (!method) continue;
         const methodPath = Reflect.getMetadata("path", method);
         const methodType: HttpMethods = Reflect.getMetadata("method", method);
+        const redirect = Reflect.getMetadata("redirect", method);
         const customHeader: Record<string, string> = Reflect.getMetadata(
           "header",
           method
@@ -142,6 +149,17 @@ export class NestApplication {
             );
 
             const result = method?.call(instance, ...methodArguments);
+
+            const hasRedirect = redirect && Object.keys(redirect)?.length;
+            const hasUrlResult =
+              result instanceof Object && Reflect.has(result, "url");
+
+            if (hasRedirect || hasUrlResult) {
+              return this.redirectRoute(
+                response,
+                hasRedirect ? redirect : result
+              );
+            }
 
             const hasResponseDecorator = this.inspectDecorator(paramsMetaData);
             if (hasResponseDecorator) return;
