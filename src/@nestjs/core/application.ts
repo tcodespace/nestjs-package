@@ -55,7 +55,8 @@ export class NestApplication {
           )
         );
       } else {
-        this.providers.set(provider, new provider());
+        const dependencies = this.resolveDependencies(provider);
+        this.providers.set(provider, new provider(...dependencies));
       }
     }
   }
