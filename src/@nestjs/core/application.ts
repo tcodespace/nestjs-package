@@ -17,10 +17,12 @@ import {
   type ParamsDecoratorMeta,
 } from "../common";
 import { isPromise } from "rattail";
+import { DESIGN_PARAMTYPES } from "@nestjs/const";
 
 export class NestApplication {
   private readonly app: Express;
   private readonly module: Function;
+  private readonly providers = new Map();
   private readonly _baseBath: string = "/";
 
   constructor(module: Function) {
@@ -28,10 +30,45 @@ export class NestApplication {
     this.app.use(express.json());
     this.app.use(express.urlencoded({ extended: true }));
     this.module = module;
+    this.resolveProviders(module);
   }
 
   public use(middleware: RequestHandler | ErrorRequestHandler) {
     this.app.use(middleware);
+  }
+
+  private resolveProviders(Module: Function) {
+    const providers = Reflect.getMetadata("providers", Module) || [];
+    for (const provider of providers) {
+      if (provider.provide && provider.useClass) {
+        const dependencies = this.resolveDependencies(provider.useClass);
+        const obj = new provider.useClass(...dependencies);
+        this.providers.set(provider.provide, obj);
+      } else if (provider.provide && provider.useValue) {
+        this.providers.set(provider.provide, provider.useValue);
+      } else if (provider.provide && provider.useFactory) {
+        const args = provider.inject ?? [];
+        this.providers.set(
+          provider.provide,
+          provider.useFactory(
+            ...args.map((item: any) => this.providers.get(item) ?? item)
+          )
+        );
+      } else {
+        this.providers.set(provider, new provider());
+      }
+    }
+  }
+
+  private resolveDependencies(Class: Function) {
+    const injectParams = Reflect.getMetadata("injectToken", Class);
+    const dependenciesParams =
+      Reflect.getMetadata(DESIGN_PARAMTYPES, Class) ?? [];
+
+    return dependenciesParams.map(
+      (item: new (...args: any[]) => any, index: number) =>
+        this.providers.get(injectParams[index] ?? item)
+    );
   }
 
   private redirectRoute(response: Response, redirect: RedirectInfo) {
@@ -119,7 +156,9 @@ export class NestApplication {
     );
 
     for (const Controller of controllers) {
-      const instance: ControllerInstance = new Controller();
+      const dependencies = this.resolveDependencies(Controller);
+
+      const instance: ControllerInstance = new Controller(...dependencies);
 
       const prefix = Reflect.getMetadata("controllerPrefix", Controller);
 

@@ -3,7 +3,7 @@ import type { NextFunction } from "express";
 export interface NestModuleOptions {
   imports?: Function[];
   controllers?: Function[];
-  providers?: Function[];
+  providers?: (Function | Record<string, any>)[];
   exports?: Function[];
 }
 

@@ -12,18 +12,28 @@ import {
   Head,
   Next,
   Redirect,
+  Inject,
 } from "@nestjs/common";
 import type {
   Request as ExpressRequest,
   Response as ExpressResponse,
 } from "express";
 import { User } from "./decorator/user.decorator";
+import { AppService } from "./app.service";
+import { UserService } from "./user.service";
+import { FactoryService } from "./factory.module";
 
 /**
  * 以下装饰器测试
  */
 @Controller("api")
 export class AppController {
+  constructor(
+    private readonly appService: AppService,
+    @Inject("USER_SERVICE") private readonly userService: UserService,
+    @Inject("FactoryToken") private readonly factoryService: FactoryService
+  ) {}
+
   @Get("hello/:username/:id")
   getHello(
     @Request() request: ExpressRequest,
@@ -83,7 +93,18 @@ export class AppController {
   }
 
   @Get("/user")
-  getUserDecorator(@User() user: object) {
+  getUserDecorator(user: object) {
     return user;
+  }
+
+  @Get("/list")
+  getList() {
+    console.log(
+      "DI -> ",
+      this.appService,
+      this.userService,
+      this.factoryService
+    );
+    return this.appService.getAllList();
   }
 }
