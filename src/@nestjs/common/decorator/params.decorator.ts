@@ -15,10 +15,14 @@ type FactoryParamsTypeMap = {
   };
 };
 
-export function createParamsDecorator<T extends ParamsDecoratorType>(
+export function createParamsDecorator<T extends ParamsDecoratorType | Function>(
   paramsDecoratorType: T
 ) {
-  return function (factoryParams?: FactoryParamsTypeMap[T]) {
+  return function (
+    factoryParams?: T extends ParamsDecoratorType
+      ? FactoryParamsTypeMap[T]
+      : never
+  ) {
     return (target: object, propertyKey: string, paramsIndex: number) => {
       const paramsMetaData: ParamsDecoratorMeta[] =
         Reflect.getMetadata("params", target, propertyKey) || [];

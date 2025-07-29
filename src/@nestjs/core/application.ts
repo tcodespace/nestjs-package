@@ -75,6 +75,17 @@ export class NestApplication {
     // 处理参数装饰器
     const methodArguments = paramsMetaData.map((item) => {
       const params = String(item.params);
+      // 自定义参数装饰器
+      if (item.type instanceof Function) {
+        const context = {
+          switchToHttp: () => ({
+            getRequest: () => request,
+            getResponse: () => response,
+            getNext: () => next,
+          }),
+        };
+        return item.type(undefined, context);
+      }
       switch (item.type) {
         case "Request":
           return params ? (request as any)[params] : request;

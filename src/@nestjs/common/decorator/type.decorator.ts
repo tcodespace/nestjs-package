@@ -1,3 +1,5 @@
+import type { NextFunction } from "express";
+
 export interface NestModuleOptions {
   imports?: Function[];
   controllers?: Function[];
@@ -32,13 +34,21 @@ export type ParamsDecoratorType =
   | "Next";
 
 export interface ParamsDecoratorMeta {
-  type: ParamsDecoratorType;
+  type: ParamsDecoratorType | Function;
   params?: string | object;
 }
 
 export interface RedirectInfo {
   url: string;
   status: number;
+}
+
+export interface ExecutionContext {
+  switchToHttp: () => {
+    getRequest: () => Request & Record<string, any>;
+    getResponse: () => Response;
+    getNext: () => NextFunction;
+  };
 }
 
 export const ResponseDecoratorPassthrough = "passthrough";

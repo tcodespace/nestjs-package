@@ -17,6 +17,7 @@ import type {
   Request as ExpressRequest,
   Response as ExpressResponse,
 } from "express";
+import { User } from "./decorator/user.decorator";
 
 /**
  * 以下装饰器测试
@@ -79,5 +80,10 @@ export class AppController {
       url: "https://www.zhihu.com",
       status: 302,
     };
+  }
+
+  @Get("/user")
+  getUserDecorator(@User() user: object) {
+    return user;
   }
 }
