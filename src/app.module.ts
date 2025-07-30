@@ -1,8 +1,9 @@
 import { Module } from "@nestjs/common";
 import { AppController } from "./app.controller";
 import { AppService } from "./app.service";
-import { UserService } from "./user.service";
-import { FactoryService } from "./factory.module";
+import { UserService } from "./services/user.service";
+import { FactoryService } from "./services/factory.service";
+import { LoggerModule } from "./modules/logger.module";
 
 @Module({
   controllers: [AppController],
@@ -26,5 +27,6 @@ import { FactoryService } from "./factory.module";
       ) => new FactoryService(prefix1, prefix2, USER_SERVICE),
     },
   ],
+  imports: [LoggerModule],
 })
 export class AppModule {}

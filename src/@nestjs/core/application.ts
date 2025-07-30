@@ -18,6 +18,7 @@ import {
 } from "../common";
 import { isPromise } from "rattail";
 import { DESIGN_PARAMTYPES } from "@nestjs/const";
+import { ProviderObject, ProviderType } from "./core.type";
 
 export class NestApplication {
   private readonly app: Express;
@@ -38,26 +39,75 @@ export class NestApplication {
   }
 
   private resolveProviders(Module: Function) {
-    const providers = Reflect.getMetadata("providers", Module) || [];
-    for (const provider of providers) {
-      if (provider.provide && provider.useClass) {
-        const dependencies = this.resolveDependencies(provider.useClass);
-        const obj = new provider.useClass(...dependencies);
-        this.providers.set(provider.provide, obj);
-      } else if (provider.provide && provider.useValue) {
-        this.providers.set(provider.provide, provider.useValue);
-      } else if (provider.provide && provider.useFactory) {
-        const args = provider.inject ?? [];
-        this.providers.set(
-          provider.provide,
-          provider.useFactory(
-            ...args.map((item: any) => this.providers.get(item) ?? item)
-          )
-        );
-      } else {
-        const dependencies = this.resolveDependencies(provider);
-        this.providers.set(provider, new provider(...dependencies));
+    /*
+      const providers = Reflect.getMetadata("providers", Module) || [];
+      for (const provider of providers) {
+        if (provider.provide && provider.useClass) {
+          const dependencies = this.resolveDependencies(provider.useClass);
+          const obj = new provider.useClass(...dependencies);
+          this.providers.set(provider.provide, obj);
+        } else if (provider.provide && provider.useValue) {
+          this.providers.set(provider.provide, provider.useValue);
+        } else if (provider.provide && provider.useFactory) {
+          const args = provider.inject ?? [];
+          this.providers.set(
+            provider.provide,
+            provider.useFactory(
+              ...args.map((item: any) => this.providers.get(item) ?? item)
+            )
+          );
+        } else {
+          const dependencies = this.resolveDependencies(provider);
+          this.providers.set(provider, new provider(...dependencies));
+        }
       }
+    */
+
+    const imports = Reflect.getMetadata("imports", Module) ?? [];
+
+    for (const importModule of imports) {
+      const importsProviders =
+        Reflect.getMetadata("providers", importModule) ?? [];
+      for (const provider of importsProviders) {
+        this.addProvider(provider);
+      }
+    }
+
+    const rootProviders = Reflect.getMetadata("providers", Module) ?? [];
+    for (const provider of rootProviders) {
+      this.addProvider(provider);
+    }
+  }
+
+  private addProvider(provider: ProviderType | ProviderObject) {
+    const injectProvider =
+      provider instanceof Function ? provider : provider.provide;
+
+    if (this.providers.has(injectProvider)) return;
+
+    if (typeof provider === "function") {
+      const dependencies = this.resolveDependencies(provider);
+      this.providers.set(
+        provider,
+        new (provider as new (...args: any[]) => any)(...dependencies)
+      );
+      return;
+    }
+
+    if (provider.provide && provider.useClass) {
+      const dependencies = this.resolveDependencies(provider.useClass);
+      const obj = new provider.useClass(...dependencies);
+      this.providers.set(provider.provide, obj);
+    } else if (provider.provide && provider.useValue) {
+      this.providers.set(provider.provide, provider.useValue);
+    } else if (provider.provide && provider.useFactory) {
+      const args = provider.inject ?? [];
+      this.providers.set(
+        provider.provide,
+        provider.useFactory(
+          ...args.map((item: any) => this.providers.get(item) ?? item)
+        )
+      );
     }
   }
 

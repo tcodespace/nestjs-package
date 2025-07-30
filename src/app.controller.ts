@@ -18,10 +18,11 @@ import type {
   Request as ExpressRequest,
   Response as ExpressResponse,
 } from "express";
-import { User } from "./decorator/user.decorator";
+import { User } from "./decorators/user.decorator";
 import { AppService } from "./app.service";
-import { UserService } from "./user.service";
-import { FactoryService } from "./factory.module";
+import { UserService } from "./services/user.service";
+import { FactoryService } from "./services/factory.service";
+import { LoggerService } from "./modules/logger.service";
 
 /**
  * 以下装饰器测试
@@ -31,7 +32,8 @@ export class AppController {
   constructor(
     private readonly appService: AppService,
     @Inject("USER_SERVICE") private readonly userService: UserService,
-    @Inject("FactoryToken") private readonly factoryService: FactoryService
+    @Inject("FactoryToken") private readonly factoryService: FactoryService,
+    private readonly loggerService: LoggerService
   ) {}
 
   @Get("hello/:username/:id")
@@ -93,7 +95,7 @@ export class AppController {
   }
 
   @Get("/user")
-  getUserDecorator(user: object) {
+  getUserDecorator(@User() user: object) {
     return user;
   }
 
@@ -105,6 +107,7 @@ export class AppController {
       this.userService,
       this.factoryService
     );
-    return this.appService.getAllList();
+    console.log("[ ------ ] >", this.loggerService);
+    return this.loggerService.getAll();
   }
 }
