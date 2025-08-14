@@ -75,7 +75,7 @@ export class NestApplication {
           this.resolveProviders(service);
         } else {
           const provider = importsProviders.find(
-            (item: Record<string, unknown>) =>
+            (item: ProviderObject) =>
               item.provide === service || item === service
           );
           if (provider) {
