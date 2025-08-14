@@ -68,6 +68,22 @@ export class NestApplication {
     for (const importModule of imports) {
       const importsProviders =
         Reflect.getMetadata("providers", importModule) ?? [];
+      const exportServices = Reflect.getMetadata("exports", importModule) ?? [];
+
+      for (const service of exportServices) {
+        if (this.isModule(service)) {
+          this.resolveProviders(service);
+        } else {
+          const provider = importsProviders.find(
+            (item: Record<string, unknown>) =>
+              item.provide === service || item === service
+          );
+          if (provider) {
+            this.addProvider(provider);
+          }
+        }
+      }
+
       for (const provider of importsProviders) {
         this.addProvider(provider);
       }
@@ -77,6 +93,14 @@ export class NestApplication {
     for (const provider of rootProviders) {
       this.addProvider(provider);
     }
+  }
+
+  private isModule(module: Function) {
+    return (
+      module &&
+      typeof module === "function" &&
+      Reflect.getMetadata("is-module", module)
+    );
   }
 
   private addProvider(provider: ProviderType | ProviderObject) {
