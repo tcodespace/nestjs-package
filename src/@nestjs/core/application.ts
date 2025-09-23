@@ -25,20 +25,38 @@ export class NestApplication {
   private readonly module: Function;
   private readonly providers = new Map();
   private readonly _baseBath: string = "/";
+  private readonly modulesBucket = new Map<Function, Set<Function | string>>();
+  private readonly providersBucket = new Map<
+    Function | string,
+    new (...args: any[]) => any
+  >();
+  private readonly globalProviders = new Set<Function | string>();
 
   constructor(module: Function) {
     this.app = express();
     this.app.use(express.json());
     this.app.use(express.urlencoded({ extended: true }));
     this.module = module;
-    this.resolveProviders(module);
+    this.initProvider();
   }
 
   public use(middleware: RequestHandler | ErrorRequestHandler) {
     this.app.use(middleware);
   }
 
-  private resolveProviders(Module: Function) {
+  private initProvider() {
+    const imports = Reflect.getMetadata("imports", this.module) ?? [];
+    for (const importModule of imports) {
+      this.resolveProviders(importModule, this.module);
+    }
+
+    const rootProviders = Reflect.getMetadata("providers", this.module) ?? [];
+    for (const provider of rootProviders) {
+      this.addProvider(provider, this.module);
+    }
+  }
+
+  private resolveProviders(module: Function, ...parentModules: Function[]) {
     /*
       const providers = Reflect.getMetadata("providers", Module) || [];
       for (const provider of providers) {
@@ -63,35 +81,23 @@ export class NestApplication {
       }
     */
 
-    const imports = Reflect.getMetadata("imports", Module) ?? [];
+    const global = Reflect.getMetadata("global", module);
+    const importsProviders = Reflect.getMetadata("providers", module) ?? [];
+    const exportServices = Reflect.getMetadata("exports", module) ?? [];
 
-    for (const importModule of imports) {
-      const importsProviders =
-        Reflect.getMetadata("providers", importModule) ?? [];
-      const exportServices = Reflect.getMetadata("exports", importModule) ?? [];
-
-      for (const service of exportServices) {
-        if (this.isModule(service)) {
-          this.resolveProviders(service);
-        } else {
-          const provider = importsProviders.find(
-            (item: ProviderObject) =>
-              item.provide === service || item === service
-          );
-          if (provider) {
-            this.addProvider(provider);
-          }
+    for (const service of exportServices) {
+      if (this.isModule(service)) {
+        this.resolveProviders(service, module, ...parentModules);
+      } else {
+        const provider = importsProviders.find(
+          (item: ProviderObject) => item.provide === service || item === service
+        );
+        if (provider) {
+          [module, ...parentModules].forEach((item) => {
+            this.addProvider(provider, item, global);
+          });
         }
       }
-
-      for (const provider of importsProviders) {
-        this.addProvider(provider);
-      }
-    }
-
-    const rootProviders = Reflect.getMetadata("providers", Module) ?? [];
-    for (const provider of rootProviders) {
-      this.addProvider(provider);
     }
   }
 
@@ -103,36 +109,67 @@ export class NestApplication {
     );
   }
 
-  private addProvider(provider: ProviderType | ProviderObject) {
-    const injectProvider =
+  private addProvider(
+    provider: ProviderType | ProviderObject,
+    module: Function,
+    global: boolean = false
+  ) {
+    const providers = global
+      ? this.globalProviders
+      : this.modulesBucket.get(module) || new Set();
+
+    if (!this.modulesBucket.has(module)) {
+      this.modulesBucket.set(module, providers);
+    }
+
+    const injectToken =
       provider instanceof Function ? provider : provider.provide;
 
-    if (this.providers.has(injectProvider)) return;
+    if (this.providersBucket.has(injectToken!)) {
+      providers.add(injectToken!);
+      return;
+    }
 
     if (typeof provider === "function") {
       const dependencies = this.resolveDependencies(provider);
-      this.providers.set(
+      this.providersBucket.set(
         provider,
         new (provider as new (...args: any[]) => any)(...dependencies)
       );
+      providers.add(provider);
       return;
     }
 
     if (provider.provide && provider.useClass) {
       const dependencies = this.resolveDependencies(provider.useClass);
       const obj = new provider.useClass(...dependencies);
-      this.providers.set(provider.provide, obj);
+      this.providersBucket.set(provider.provide, obj);
+      providers.add(provider.provide);
     } else if (provider.provide && provider.useValue) {
-      this.providers.set(provider.provide, provider.useValue);
+      this.providersBucket.set(provider.provide, provider.useValue);
+      providers.add(provider.provide);
     } else if (provider.provide && provider.useFactory) {
       const args = provider.inject ?? [];
-      this.providers.set(
+      this.providersBucket.set(
         provider.provide,
         provider.useFactory(
-          ...args.map((item: any) => this.providers.get(item) ?? item)
+          ...args.map(
+            (item: any) => this.getProvidersByToken(module, item) ?? item
+          )
         )
       );
+      providers.add(provider.provide);
     }
+  }
+
+  private getProvidersByToken(module: Function, token: string) {
+    if (
+      this.modulesBucket.get(module)?.has(token) ||
+      this.globalProviders.has(token)
+    ) {
+      return this.providersBucket.get(token);
+    }
+    return null;
   }
 
   private resolveDependencies(Class: Function) {
@@ -140,9 +177,11 @@ export class NestApplication {
     const dependenciesParams =
       Reflect.getMetadata(DESIGN_PARAMTYPES, Class) ?? [];
 
+    const module = Reflect.getMetadata("nestModule", Class);
+
     return dependenciesParams.map(
       (item: new (...args: any[]) => any, index: number) =>
-        this.providers.get(injectParams[index] ?? item)
+        this.getProvidersByToken(module, injectParams[index]) ?? item
     );
   }
 
