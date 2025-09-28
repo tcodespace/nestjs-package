@@ -10,6 +10,7 @@ import type {
   ErrorRequestHandler,
 } from "express";
 import {
+  defineModule,
   RedirectInfo,
   ResponseDecoratorPassthrough,
   type ControllerInstance,
@@ -46,7 +47,29 @@ export class NestApplication {
   private initProvider() {
     const imports = Reflect.getMetadata("imports", this.module) ?? [];
     for (const importModule of imports) {
-      this.resolveProviders(importModule, this.module);
+      if ("module" in importModule) {
+        const { module, providers, exports, controllers } = importModule;
+        const newProviders = [
+          ...(Reflect.getMetadata("providers", module) ?? []),
+          ...(providers ?? []),
+        ];
+        const newExports = [
+          ...(Reflect.getMetadata("exports", module) ?? []),
+          ...(exports ?? []),
+        ];
+        const newControllers = [
+          ...(Reflect.getMetadata("controllers", module) ?? []),
+          ...(controllers ?? []),
+        ];
+        defineModule(module, newProviders || []);
+        defineModule(module, newControllers || []);
+        Reflect.defineMetadata("providers", newProviders, module);
+        Reflect.defineMetadata("exports", newExports, module);
+        Reflect.defineMetadata("controllers", newControllers, module);
+        this.resolveProviders(module, this.module);
+      } else {
+        this.resolveProviders(importModule, this.module);
+      }
     }
 
     const rootProviders = Reflect.getMetadata("providers", this.module) ?? [];

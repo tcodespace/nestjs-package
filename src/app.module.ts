@@ -4,6 +4,7 @@ import { AppService } from "./app.service";
 import { UserService } from "./services/user.service";
 import { FactoryService } from "./services/factory.service";
 import { LoggerModule } from "./modules/logger.module";
+import { DynamicConfigModule } from "./modules/dynamic.module";
 
 @Module({
   controllers: [AppController],
@@ -27,6 +28,7 @@ import { LoggerModule } from "./modules/logger.module";
       ) => new FactoryService(prefix1, prefix2, USER_SERVICE),
     },
   ],
-  imports: [LoggerModule],
+  // @ts-ignore
+  imports: [LoggerModule, DynamicConfigModule.forRoot()],
 })
 export class AppModule {}

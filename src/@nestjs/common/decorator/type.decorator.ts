@@ -4,7 +4,7 @@ export interface NestModuleOptions {
   imports?: Function[];
   controllers?: Function[];
   providers?: (Function | Record<string, any>)[];
-  exports?: Function[];
+  exports?: (Function | string)[];
 }
 
 export interface NestControllerOptions {
@@ -52,3 +52,7 @@ export interface ExecutionContext {
 }
 
 export const ResponseDecoratorPassthrough = "passthrough";
+
+export interface DynamicModule extends NestModuleOptions {
+  module: Function;
+}
