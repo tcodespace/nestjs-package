@@ -1,10 +1,16 @@
-import { Module } from "@nestjs/common";
+import {
+  HttpMethodMiddleware,
+  MiddlewareConsumer,
+  Module,
+  NestModule,
+} from "@nestjs/common";
 import { AppController } from "./app.controller";
 import { AppService } from "./app.service";
 import { UserService } from "./services/user.service";
 import { FactoryService } from "./services/factory.service";
 import { LoggerModule } from "./modules/logger.module";
 import { DynamicConfigModule } from "./modules/dynamic.module";
+import { UserMiddleware } from "./middleware/user.middleware";
 
 @Module({
   controllers: [AppController],
@@ -31,4 +37,11 @@ import { DynamicConfigModule } from "./modules/dynamic.module";
   // @ts-ignore
   imports: [LoggerModule, DynamicConfigModule.forRoot()],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer): void {
+    consumer.apply(UserMiddleware).forRoutes({
+      path: "/api/user",
+      method: HttpMethodMiddleware.GET,
+    });
+  }
+}

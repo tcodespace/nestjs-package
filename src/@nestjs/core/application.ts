@@ -11,6 +11,8 @@ import type {
 } from "express";
 import {
   defineModule,
+  HttpMethodMiddleware,
+  NestMiddleware,
   RedirectInfo,
   ResponseDecoratorPassthrough,
   type ControllerInstance,
@@ -24,6 +26,9 @@ import { ProviderObject, ProviderType } from "./core.type";
 export class NestApplication {
   private readonly app: Express;
   private readonly module: Function;
+  private readonly middlewareBucket = new Set<
+    new (...args: any[]) => NestMiddleware
+  >();
   private readonly _baseBath: string = "/";
   private readonly modulesBucket = new Map<Function, Set<Function | string>>();
   private readonly providersBucket = new Map<
@@ -37,18 +42,82 @@ export class NestApplication {
     this.app.use(express.json());
     this.app.use(express.urlencoded({ extended: true }));
     this.module = module;
-    this.initProvider();
+    this.initMiddleware();
   }
 
   public use(middleware: RequestHandler | ErrorRequestHandler) {
     this.app.use(middleware);
   }
 
-  private initProvider() {
+  private initMiddleware() {
+    this.module.prototype.configure(this);
+  }
+
+  private apply(...middlewareList: (new (...args: []) => NestMiddleware)[]) {
+    for (const middleware of middlewareList) {
+      this.middlewareBucket.add(middleware);
+    }
+    return this;
+  }
+
+  private forRoutes(
+    ...routes:
+      | Array<string>
+      | Array<{ path: string; method: HttpMethodMiddleware }>
+  ) {
+    for (const route of routes) {
+      const { routePath, routeMethod } = this.normalizeRoutes(route);
+      for (const middleware of this.middlewareBucket) {
+        this.app.use(routePath, (req, res, next) => {
+          if (
+            routeMethod === HttpMethodMiddleware.ALL ||
+            routeMethod === req.method
+          ) {
+            const middlewareInstance = this.getMiddlewareInstance(middleware);
+            middlewareInstance.use(req, res, next);
+          } else {
+            next();
+          }
+        });
+      }
+    }
+  }
+
+  private getMiddlewareInstance(
+    middleware: (new (...args: []) => NestMiddleware) | NestMiddleware
+  ): NestMiddleware {
+    return middleware instanceof Function ? new middleware() : middleware;
+  }
+
+  private normalizeRoutes(
+    routes: string | { path: string; method: HttpMethodMiddleware }
+  ) {
+    let routePath = "",
+      routeMethod = HttpMethodMiddleware.ALL;
+
+    if (typeof routes === "string") {
+      routePath = routes;
+    } else {
+      routePath = routes.path;
+      routeMethod = routes.method;
+    }
+
+    return {
+      routePath: path.posix.join(this._baseBath, routePath),
+      routeMethod,
+    };
+  }
+
+  private async initProvider() {
     const imports = Reflect.getMetadata("imports", this.module) ?? [];
     for (const importModule of imports) {
-      if ("module" in importModule) {
-        const { module, providers, exports, controllers } = importModule;
+      let dynamicModule = null;
+      if (isPromise(importModule)) {
+        dynamicModule = await importModule;
+      }
+      const moduleTrack = dynamicModule ?? importModule;
+      if ("module" in moduleTrack) {
+        const { module, providers, exports, controllers } = moduleTrack;
         const newProviders = [
           ...(Reflect.getMetadata("providers", module) ?? []),
           ...(providers ?? []),
@@ -68,7 +137,7 @@ export class NestApplication {
         Reflect.defineMetadata("controllers", newControllers, module);
         this.resolveProviders(module, this.module);
       } else {
-        this.resolveProviders(importModule, this.module);
+        this.resolveProviders(moduleTrack, this.module);
       }
     }
 
@@ -201,10 +270,9 @@ export class NestApplication {
     const nextMeteData = paramsMetaData?.find((item) => item.type === "Next");
 
     if (responseMetaData?.params) {
-      hasPassthrough = Reflect.has(
-        responseMetaData?.params as object,
+      hasPassthrough = (responseMetaData.params as { passthrough: boolean })[
         ResponseDecoratorPassthrough
-      );
+      ];
     }
     return (responseMetaData && !hasPassthrough) || nextMeteData;
   }
@@ -338,8 +406,8 @@ export class NestApplication {
   }
 
   async listen(port: number) {
+    await this.initProvider();
     await this.resolver();
-
     this.app.listen(port, () => {
       console.log(`Server is running on port ${port}`);
     });

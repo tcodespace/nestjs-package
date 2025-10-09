@@ -60,8 +60,9 @@ export class AppController {
   }
 
   @Get("/get/response")
-  getResponse(@Response({ passthrough: true }) response: ExpressResponse) {
+  getResponse(@Response({ passthrough: false }) response: ExpressResponse) {
     console.log("[ response ] >", response);
+    response.status(200).send("response 拦截");
     return "111";
   }
 

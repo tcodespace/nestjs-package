@@ -5,7 +5,7 @@ import { DynamicModule, Module } from "@nestjs/common";
   exports: [],
 })
 export class DynamicConfigModule {
-  static forRoot(): DynamicModule {
+  static forRoot(): DynamicModule | Promise<DynamicModule> {
     const providers = [
       {
         provide: "Config",
@@ -14,13 +14,17 @@ export class DynamicConfigModule {
         },
       },
     ];
-    return {
-      controllers: [],
-      providers,
-      exports: providers.map((provider) =>
-        provider instanceof Function ? provider : provider.provide
-      ),
-      module: DynamicConfigModule,
-    };
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve({
+          controllers: [],
+          providers,
+          exports: providers.map((provider) =>
+            provider instanceof Function ? provider : provider.provide
+          ),
+          module: DynamicConfigModule,
+        });
+      }, 300);
+    });
   }
 }
