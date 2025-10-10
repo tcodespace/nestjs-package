@@ -42,7 +42,6 @@ export class NestApplication {
     this.app.use(express.json());
     this.app.use(express.urlencoded({ extended: true }));
     this.module = module;
-    this.initMiddleware();
   }
 
   public use(middleware: RequestHandler | ErrorRequestHandler) {
@@ -54,6 +53,7 @@ export class NestApplication {
   }
 
   private apply(...middlewareList: (new (...args: []) => NestMiddleware)[]) {
+    defineModule(this.module, middlewareList);
     for (const middleware of middlewareList) {
       this.middlewareBucket.add(middleware);
     }
@@ -84,9 +84,16 @@ export class NestApplication {
   }
 
   private getMiddlewareInstance(
-    middleware: (new (...args: []) => NestMiddleware) | NestMiddleware
+    middleware: (new (...args: unknown[]) => NestMiddleware) | NestMiddleware
   ): NestMiddleware {
-    return middleware instanceof Function ? new middleware() : middleware;
+    const dependencies: unknown[] =
+      this.resolveDependencies(
+        middleware as new (...args: []) => NestMiddleware
+      ) ?? [];
+
+    return middleware instanceof Function
+      ? new middleware(...dependencies)
+      : middleware;
   }
 
   private normalizeRoutes(
@@ -240,7 +247,7 @@ export class NestApplication {
   }
 
   private resolveDependencies(Class: Function) {
-    const injectParams = Reflect.getMetadata("injectToken", Class);
+    const injectParams = Reflect.getMetadata("injectToken", Class) ?? [];
     const dependenciesParams =
       Reflect.getMetadata(DESIGN_PARAMTYPES, Class) ?? [];
 
@@ -248,7 +255,7 @@ export class NestApplication {
 
     return dependenciesParams.map(
       (item: new (...args: any[]) => any, index: number) =>
-        this.getProvidersByToken(module, injectParams[index]) ?? item
+        this.getProvidersByToken(module, injectParams[index] ?? item) ?? item
     );
   }
 
@@ -407,6 +414,7 @@ export class NestApplication {
 
   async listen(port: number) {
     await this.initProvider();
+    await this.initMiddleware();
     await this.resolver();
     this.app.listen(port, () => {
       console.log(`Server is running on port ${port}`);
