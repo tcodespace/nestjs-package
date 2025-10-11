@@ -5,5 +5,5 @@ export enum HttpMethodMiddleware {
   DELETE = "DELETE",
   PATCH = "PATCH",
   HEAD = "HEAD",
-  ALL = "*",
+  ALL = "ALL",
 }
