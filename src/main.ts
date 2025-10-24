@@ -5,6 +5,7 @@ import { AppModule } from "./app.module";
 import session from "express-session";
 
 import type { Request, Response } from "express";
+import { TimestampExceptionFilter } from "./filters/timestamp.exception.filter";
 
 function bootstrap() {
   const app = NestFactory.create(AppModule);
@@ -30,6 +31,7 @@ function bootstrap() {
       next();
     }
   );
+
   app.listen(3000);
 }
 

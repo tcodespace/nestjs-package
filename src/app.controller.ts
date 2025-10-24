@@ -13,6 +13,8 @@ import {
   Next,
   Redirect,
   Inject,
+  HttpException,
+  HttpStatus,
 } from "@nestjs/common";
 import type {
   Request as ExpressRequest,
@@ -23,6 +25,9 @@ import { AppService } from "./app.service";
 import { UserService } from "./services/user.service";
 import { FactoryService } from "./services/factory.service";
 import { LoggerService } from "./modules/logger.service";
+import { ForbiddenException } from "./exception/forbidden.exception";
+import { UseFilters } from "@nestjs/common/decorator/use.filters.decorator";
+import { TimestampExceptionFilter } from "./filters/timestamp.exception.filter";
 
 /**
  * 以下装饰器测试
@@ -110,5 +115,24 @@ export class AppController {
     );
     console.log("[ ------ ] >", this.loggerService);
     return this.loggerService.getAll();
+  }
+
+  @Get("exception")
+  getException() {
+    throw new HttpException("404 not found", HttpStatus.NOT_FOUND);
+  }
+
+  @Get("forbidden")
+  @UseFilters(TimestampExceptionFilter)
+  getForbidden() {
+    throw new ForbiddenException();
+  }
+
+  @Get("params/:name/:id")
+  getTimestamp(@Params("name") name: string, @Params("id") id: number) {
+    return {
+      name,
+      id,
+    };
   }
 }
